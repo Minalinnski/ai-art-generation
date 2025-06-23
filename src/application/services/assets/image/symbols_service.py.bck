@@ -1,0 +1,421 @@
+# src/application/services/assets/image/symbols_service.py (更新版)
+import uuid
+import base64
+from typing import Dict, Any, List, Optional, Tuple
+from datetime import datetime
+
+from src.application.services.assets.core.base_asset_service import BaseAssetService
+from src.application.config.assets.asset_settings import get_asset_settings
+from src.application.services.external.s3_service import s3_service
+from src.application.services.external.ai_service_factory import ai_service_factory, ModelProviderEnum
+from src.schemas.dtos.request.image_request import SymbolGPTInput
+from src.schemas.dtos.response.image_response import ImageGenResponse
+
+from src.schemas.enums.ai_enums import AssetModelAliasEnum, ModelProviderEnum
+
+class SymbolsService(BaseAssetService):
+    """符号生成服务 - 支持任务系统"""
+    
+    # 内置提示词模板
+    PROMPT_TEMPLATES = {
+        "base_symbols": {
+            "low_value": {
+                "template": "Create a {style_theme} style low value symbol for '{symbol_type}' with {art_style} art style. The symbol should be {resolution} resolution, with {color_palette} color palette. Style elements: {style_elements}",
+                "default_params": {
+                    "art_style": "detailed illustration",
+                    "style_elements": "ornate, fantasy elements"
+                }
+            },
+            "high_value": {
+                "template": "Create a {style_theme} style high value symbol representing '{symbol_type}' with {art_style} art style. The symbol should be premium looking, {resolution} resolution, with {color_palette} color palette. Style elements: {style_elements}",
+                "default_params": {
+                    "art_style": "highly detailed illustration", 
+                    "style_elements": "luxurious, powerful, mystical"
+                }
+            }
+        },
+        "special_symbols": {
+            "wild": {
+                "template": "Create a {style_theme} style WILD symbol {variant} with {art_style} art style. This should be the most prominent and magical symbol, {resolution} resolution, with {color_palette} color palette. Style elements: {style_elements}",
+                "default_params": {
+                    "art_style": "epic fantasy illustration",
+                    "style_elements": "glowing, magical energy, dominant presence"
+                }
+            },
+            "scatter": {
+                "template": "Create a {style_theme} style SCATTER symbol with {art_style} art style. This should trigger special features, {resolution} resolution, with {color_palette} color palette. Style elements: {style_elements}",
+                "default_params": {
+                    "art_style": "mystical illustration",
+                    "style_elements": "scattered light effects, mysterious"
+                }
+            },
+            "bonus": {
+                "template": "Create a {style_theme} style BONUS symbol with {art_style} art style. This should represent bonus games, {resolution} resolution, with {color_palette} color palette. Style elements: {style_elements}",
+                "default_params": {
+                    "art_style": "reward-themed illustration",
+                    "style_elements": "treasure, rewards, exciting"
+                }
+            }
+        }
+    }
+    
+    # 风格主题预设
+    STYLE_PRESETS = {
+        "fantasy_medieval": {
+            "color_palette": "gold, deep blue, rich red",
+            "art_style": "medieval fantasy illustration",
+            "style_elements": "knights, castles, magical artifacts, heraldic designs"
+        },
+        "ancient_egypt": {
+            "color_palette": "gold, turquoise, sandstone",
+            "art_style": "ancient Egyptian art style",
+            "style_elements": "hieroglyphs, pharaohs, pyramids, scarabs, ankh symbols"
+        },
+        "sci_fi_cyber": {
+            "color_palette": "neon blue, electric purple, silver",
+            "art_style": "cyberpunk digital art",
+            "style_elements": "circuits, holograms, neon lights, futuristic technology"
+        },
+        "pirate_adventure": {
+            "color_palette": "ocean blue, golden yellow, weathered brown",
+            "art_style": "adventure illustration",
+            "style_elements": "treasure chests, ships, compasses, maps, skulls"
+        }
+    }
+    
+    def __init__(self):
+        super().__init__()
+        self.s3_service = s3_service
+        self.asset_settings = get_asset_settings()
+    
+    def get_asset_type(self) -> str:
+        """获取资源类型"""
+        return "symbols"
+    
+    def get_service_info(self) -> Dict[str, Any]:
+        """获取服务信息"""
+        return {
+            "service_name": self.service_name,
+            "description": "游戏符号AI生成服务",
+            "version": "1.0.1",
+            "category": "image_generation",
+            "module": "symbols",
+            "supported_categories": list(self.PROMPT_TEMPLATES.keys()),
+            "supported_style_themes": list(self.STYLE_PRESETS.keys()),
+            "available_models": self.get_available_models(),
+            "default_model": self.asset_settings.get_module_default_model("symbols"),
+            "supported_model_aliases": [alias.value for alias in AssetModelAliasEnum if alias.is_image_alias]
+        }
+    
+    def get_available_models(self) -> List[str]:
+        """获取可用模型列表 - 只返回图像生成模型"""
+        all_models = self.asset_settings.get_available_models("symbols")
+        # 过滤只返回图像生成模型别名
+        image_models = []
+        for model in all_models:
+            try:
+                alias = AssetModelAliasEnum(model)
+                if alias.is_image_alias:
+                    image_models.append(model)
+            except ValueError:
+                # 不是枚举值，跳过
+                continue
+        return image_models
+    
+    def resolve_model_config(self, model_alias: str, provider: Optional[str] = None) -> Tuple[str, str]:
+        """解析模型配置"""
+        # 验证模型别名
+        try:
+            alias_enum = AssetModelAliasEnum(model_alias)
+            if not alias_enum.is_image_alias:
+                raise ValueError(f"符号生成不支持文本模型: {model_alias}")
+        except ValueError as e:
+            if "符号生成不支持文本模型" in str(e):
+                raise
+            else:
+                raise ValueError(f"不支持的模型别名: {model_alias}")
+
+        return super().resolve_model_config(model_alias, provider)
+
+    async def generate_single_symbol(
+        self,
+        task_info: Dict[str, Any],
+        params: SymbolGPTInput,
+        model: str,
+        provider: str,
+        task_id: str
+    ) -> Dict[str, Any]:
+        """生成单个符号 - 使用枚举验证"""
+        
+        self.logger.info(f"生成单个符号: {task_info['type']}", extra={
+            "task_id": task_id,
+            "category": task_info.get("category"),
+            "subcategory": task_info.get("subcategory"),
+            "type": task_info.get("type"),
+            "model_alias": model
+        })
+        
+        try:
+            # 解析和验证模型配置
+            model_id, actual_provider = self.resolve_model_config(model, provider)
+            
+            # 构建提示词
+            prompt = self._build_prompt(task_info, params)
+            
+            # 获取AI服务
+            ai_service = ai_service_factory.get_service(ModelProviderEnum(actual_provider))
+            
+            # 准备AI推理参数 - 传递别名而不是model_id
+            inference_params = self._prepare_inference_params(prompt, model, params)
+            
+            # 调用AI生成 - 传递别名让服务自己解析
+            result = await ai_service.run_inference(model, inference_params)
+            
+            # 保存到S3
+            output_info = await self._save_generated_symbol(
+                result, task_info, params, task_id
+            )
+            
+            self.logger.info(f"符号生成完成: {task_info['type']}", extra={
+                "task_id": task_id,
+                "s3_key": output_info["s3_key"],
+                "model_used": model
+            })
+            
+            return output_info
+            
+        except Exception as e:
+            self.logger.error(f"符号生成失败: {task_info['type']} - {str(e)}", extra={
+                "task_id": task_id,
+                "model_alias": model
+            })
+            raise
+    
+    def parse_generation_tasks(self, params: SymbolGPTInput) -> List[Dict[str, Any]]:
+        """
+        解析生成任务列表 - 供Handler使用
+        
+        Returns:
+            List[Dict]: 任务信息列表，每个包含category, subcategory, type, count等
+        """
+        tasks = []
+        
+        # 处理基础符号
+        if params.base_symbols:
+            for category, config in params.base_symbols.items():
+                if isinstance(config, dict) and "types" in config:
+                    count_per_type = config.get("count_per_type", 1)
+                    for symbol_type in config["types"]:
+                        for i in range(count_per_type):
+                            tasks.append({
+                                "category": "base_symbols",
+                                "subcategory": category,
+                                "type": symbol_type,
+                                "index": i + 1,
+                                "template_key": f"base_symbols.{category}"
+                            })
+        
+        # 处理特殊符号
+        if params.special_symbols:
+            for symbol_name, config in params.special_symbols.items():
+                if config is True:
+                    # 简单启用
+                    tasks.append({
+                        "category": "special_symbols",
+                        "subcategory": symbol_name,
+                        "type": symbol_name,
+                        "index": 1,
+                        "template_key": f"special_symbols.{symbol_name}"
+                    })
+                elif isinstance(config, dict):
+                    # 复杂配置
+                    if "variants" in config:
+                        count_per_variant = config.get("count_per_variant", 1)
+                        for variant in config["variants"]:
+                            for i in range(count_per_variant):
+                                tasks.append({
+                                    "category": "special_symbols",
+                                    "subcategory": symbol_name,
+                                    "type": f"{symbol_name}_{variant}",
+                                    "variant": variant,
+                                    "index": i + 1,
+                                    "template_key": f"special_symbols.{symbol_name}"
+                                })
+                    else:
+                        count = config.get("count", 1)
+                        for i in range(count):
+                            tasks.append({
+                                "category": "special_symbols",
+                                "subcategory": symbol_name,
+                                "type": symbol_name,
+                                "index": i + 1,
+                                "template_key": f"special_symbols.{symbol_name}"
+                            })
+        
+        return tasks
+    
+    def _build_prompt(self, task_info: Dict[str, Any], params: SymbolGPTInput) -> str:
+        """构建生成提示词"""
+        template_key = task_info["template_key"]
+        template_parts = template_key.split(".")
+        
+        # 获取template配置
+        template_config = self.PROMPT_TEMPLATES
+        for part in template_parts:
+            template_config = template_config.get(part, {})
+        
+        if not template_config or "template" not in template_config:
+            # 回退到基础模板
+            return f"Create a {params.style_theme} style gaming symbol for '{task_info['type']}'"
+        
+        # 合并风格预设和用户参数
+        style_preset = self.STYLE_PRESETS.get(params.style_theme, {})
+        global_params = params.global_style_params or {}
+        template_defaults = template_config.get("default_params", {})
+        
+        # 构建提示词参数
+        prompt_params = {
+            "style_theme": params.style_theme,
+            "symbol_type": task_info["type"],
+            "resolution": params.resolution,
+            **style_preset,
+            **template_defaults,
+            **global_params
+        }
+        
+        # 处理变体
+        if "variant" in task_info:
+            prompt_params["variant"] = f"({task_info['variant']} variant)"
+        else:
+            prompt_params["variant"] = ""
+        
+        # 格式化模板
+        try:
+            prompt = template_config["template"].format(**prompt_params)
+        except KeyError as e:
+            self.logger.warning(f"模板参数缺失: {e}, 使用基础模板")
+            prompt = f"Create a {params.style_theme} style gaming symbol for '{task_info['type']}'"
+        
+        return prompt
+    
+    def _prepare_inference_params(self, prompt: str, model_alias: str, params: SymbolGPTInput) -> Dict[str, Any]:
+        """准备AI推理参数 - 基于模型别名"""
+        try:
+            alias_enum = AssetModelAliasEnum(model_alias)
+            openai_model = alias_enum.to_openai_model()
+            
+            # 根据实际的OpenAI模型准备参数
+            if openai_model.value == "dall-e-3":
+                return {
+                    "prompt": prompt,
+                    "size": params.resolution if params.resolution in ["1024x1024", "1792x1024", "1024x1792"] else "1024x1024",
+                    "quality": "standard"
+                }
+            elif openai_model.value == "gpt-image-1":
+                return {
+                    "prompt": prompt,
+                    "size": params.resolution if params.resolution in ["1024x1024", "512x512", "256x256"] else "1024x1024"
+                }
+            else:
+                # 通用图像生成参数
+                return {
+                    "prompt": prompt,
+                    "size": params.resolution or "1024x1024"
+                }
+        except ValueError:
+            # 回退到通用参数
+            return {
+                "prompt": prompt,
+                "size": params.resolution or "1024x1024"
+            }
+    
+    async def _save_generated_symbol(
+        self,
+        generated_data: str,
+        task_info: Dict[str, Any],
+        params: SymbolGPTInput,
+        task_id: str
+    ) -> Dict[str, Any]:
+        """保存生成的符号到S3"""
+        
+        # 构建文件名
+        naming_pattern = self.asset_settings.get_naming_pattern()
+        file_name = naming_pattern.format(
+            category=task_info["category"],
+            subcategory=task_info["subcategory"],
+            type=task_info["type"],
+            index=task_info["index"]
+        )
+        self.logger.warning(task_info)
+        # 构建S3路径
+        output_path = self.asset_settings.build_s3_output_path(
+            "symbols", task_id, task_info["category"], task_info["subcategory"]
+        )
+        s3_key = f"{output_path}{file_name}"
+        
+        # 处理数据 - 如果是base64格式需要解码
+        if isinstance(generated_data, str) and generated_data.startswith('data:'):
+            # 处理data URL格式
+            header, data = generated_data.split(',', 1)
+            file_content = base64.b64decode(data)
+        elif isinstance(generated_data, str):
+            # 假设是base64编码的图片数据
+            try:
+                file_content = base64.b64decode(generated_data)
+            except:
+                # 如果不是base64，作为文本处理
+                file_content = generated_data.encode()
+        else:
+            file_content = generated_data
+        
+        # 上传到S3
+        upload_result = self.s3_service.upload_file_sync(
+            file_content=file_content,
+            key=s3_key,
+            content_type="image/png",
+            metadata={
+                "task_id": task_id,
+                "module": "symbols",
+                "category": task_info["category"],
+                "subcategory": task_info["subcategory"],
+                "type": task_info["type"],
+                "index": str(task_info["index"]),
+                "style_theme": params.style_theme
+            }
+        )
+        
+        return {
+            "file_name": file_name,
+            "s3_key": s3_key,
+            "url": upload_result["url"],
+            "category": task_info["category"],
+            "subcategory": task_info["subcategory"],
+            "type": task_info["type"],
+            "index": task_info["index"],
+            "file_size": upload_result["file_size"]
+        }
+    
+    async def generate(
+        self, 
+        model: str, 
+        generation_params: Dict[str, Any], 
+        num_outputs: int = 1,
+        provider: Optional[str] = None
+    ) -> List[str]:
+        """基类要求的generate方法 - 简化实现"""
+        # 将参数转换为SymbolGPTInput
+        symbol_params = SymbolGPTInput(**generation_params)
+        
+        # 解析任务
+        tasks = self.parse_generation_tasks(symbol_params)
+        
+        # 简化：只取前num_outputs个任务
+        tasks = tasks[:num_outputs]
+        
+        # 模拟生成结果URL
+        results = []
+        for i, task in enumerate(tasks):
+            mock_url = f"https://example.com/symbols/{task['type']}_{i+1}.png"
+            results.append(mock_url)
+        
+        return results

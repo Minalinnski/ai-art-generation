@@ -1,0 +1,87 @@
+# src/application/config/ai/models.yaml
+providers:
+  openai:
+    description: "OpenAI模型配置"
+    models:
+      # 图像生成模型
+      "gpt-image-1":
+        model_type: "image_generation"
+        capabilities: ["image_generation", "style_transfer"]
+        max_resolution: "1792x1024"
+        supported_sizes: ["1024x1024", "512x512", "256x256", "1792x1024", "1024x1792"]
+        output_format: "url"  # 默认返回URL
+        supports_batch: true
+        description: "GPT Image 1模型"
+        
+      "dall-e-3":
+        model_type: "image_generation" 
+        capabilities: ["image_generation", "high_quality"]
+        max_resolution: "1792x1024"
+        supported_sizes: ["1024x1024", "1792x1024", "1024x1792"]
+        output_format: "b64_json"  # 支持base64
+        supports_batch: false
+        supports_quality: true
+        description: "DALL-E 3模型"
+        
+      # 文本生成模型
+      "gpt-4o":
+        model_type: "text_generation"
+        capabilities: ["text_generation", "image_analysis", "multimodal"]
+        max_tokens: 4096
+        supports_system_prompt: true
+        supports_image_input: true
+        description: "GPT-4o多模态模型"
+        
+      "gpt-4":
+        model_type: "text_generation"
+        capabilities: ["text_generation", "reasoning"]
+        max_tokens: 8192
+        supports_system_prompt: true
+        description: "GPT-4模型"
+        
+      "gpt-4-turbo":
+        model_type: "text_generation"
+        capabilities: ["text_generation", "reasoning", "fast"]
+        max_tokens: 4096
+        supports_system_prompt: true
+        description: "GPT-4 Turbo模型"
+        
+      "gpt-3.5-turbo":
+        model_type: "text_generation"
+        capabilities: ["text_generation", "fast", "cost_effective"]
+        max_tokens: 4096
+        supports_system_prompt: true
+        description: "GPT-3.5 Turbo模型"
+
+  replicate:
+    description: "Replicate平台模型配置"
+    models:
+      # 音频生成
+      "ardianfe/musicgen-stereo-chord:latest":
+        model_type: "audio_generation"
+        capabilities: ["music_generation", "stereo_audio"]
+        max_duration: 300
+        output_format: "wav"
+        description: "高质量立体声音乐生成"
+        
+      "meta/musicgen:latest":
+        model_type: "audio_generation"
+        capabilities: ["music_generation"]
+        max_duration: 600
+        output_format: "wav"
+        description: "Meta MusicGen音乐生成"
+        
+      # 动画生成
+      "pixverse/pixverse:latest":
+        model_type: "animation_generation"
+        capabilities: ["text_to_video", "animation"]
+        max_duration: 8
+        output_format: "mp4"
+        description: "文本到动画生成"
+        
+      "ali-vilab/i2vgen-xl:latest":
+        model_type: "animation_generation"
+        capabilities: ["image_to_video", "animation"]
+        max_duration: 24
+        output_format: "mp4"
+        description: "图片到动画生成"

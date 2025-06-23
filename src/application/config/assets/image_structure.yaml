@@ -1,0 +1,97 @@
+# src/application/config/assets/image_structure.yaml (更新版)
+# 图像资源文件结构配置 - 使用枚举别名
+
+modules:
+  symbols:
+    description: "游戏符号"
+    categories:
+      base_symbols:
+        description: "基础符号"
+        subcategories:
+          low_value:
+            description: "低价值符号"
+            common_types: ["clubs", "diamonds", "hearts", "spades", "10", "j", "q", "k", "a"]
+          high_value:
+            description: "高价值符号"
+            common_types: ["sword", "shield", "crown", "gem", "treasure"]
+      special_symbols:
+        description: "特殊符号"
+        subcategories:
+          wild:
+            description: "Wild符号"
+            variants: ["base", "expanded", "stacked"]
+          scatter:
+            description: "Scatter符号"
+            variants: ["base"]
+          bonus:
+            description: "Bonus符号"
+            variants: ["base"]
+            
+  ui:
+    description: "用户界面"
+    categories:
+      buttons:
+        description: "按钮"
+        subcategories:
+          main_controls:
+            description: "主要控制按钮"
+            common_types: ["spin", "auto_spin", "stop"]
+          bet_controls:
+            description: "下注控制"
+            common_types: ["bet_up", "bet_down", "max_bet"]
+          menu_controls:
+            description: "菜单控制"
+            common_types: ["settings", "paytable", "home", "mute"]
+      panels:
+        description: "面板"
+        subcategories:
+          info_panels:
+            description: "信息显示面板"
+            common_types: ["balance", "bet", "win", "total_win"]
+          game_area:
+            description: "游戏区域"
+            common_types: ["reel_background", "reel_frame"]
+            
+  backgrounds:
+    description: "背景图"
+    categories:
+      game_scenes:
+        description: "游戏场景"
+        subcategories:
+          main_game:
+            description: "主游戏背景"
+            common_types: ["main_background"]
+          special_modes:
+            description: "特殊模式背景"
+            common_types: ["free_spins", "bonus_game"]
+      frames:
+        description: "框架装饰"
+        subcategories:
+          border_frames:
+            description: "边框装饰"
+            common_types: ["game_frame", "panel_frame"]
+
+# 统一文件命名规则 - 所有类型都包含index
+naming_conventions:
+  pattern: "{category}_{subcategory}_{type}_{index:02d}.png"
+  examples:
+    symbols: "base_symbols_low_value_j_01.png"
+    ui: "buttons_main_controls_spin_01.png"
+    backgrounds: "game_scenes_main_game_main_background_01.png"
+
+# S3路径结构配置
+s3_paths:
+  # 输入参考图路径 (不包含bucket name)
+  input_base: "image_assets_input/references/"
+  input_structure:
+    symbols: "{style_theme}/symbols/{category}/{subcategory}/"
+    ui: "{style_theme}/ui/{category}/{subcategory}/"
+    backgrounds: "{style_theme}/backgrounds/{category}/{subcategory}/"
+  
+  # 输出结果路径 (不包含bucket name)
+  output_base: "image_assets_output/{year}-{month}-{day}/{task_id}/"
+  output_structure:
+    symbols: "symbols/{category}/{subcategory}/"
+    ui: "ui/{category}/{subcategory}/"
+    backgrounds: "backgrounds/{category}/{subcategory}/"
+

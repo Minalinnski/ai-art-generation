@@ -1,0 +1,40 @@
+# src/application/config/ai/providers.yaml
+providers:
+  replicate:
+    enabled: true
+    api_host: "https://api.replicate.com"
+    timeout: 300
+    max_retries: 3
+    rate_limit: 100
+    description: "Replicate AI平台"
+    
+  openai:
+    enabled: true
+    api_host: "https://api.openai.com/v1"
+    timeout: 120
+    max_retries: 3
+    rate_limit: 60
+    description: "OpenAI平台"
+    
+  stability:
+    enabled: false
+    api_host: "https://api.stability.ai"
+    timeout: 180
+    max_retries: 3
+    rate_limit: 50
+    description: "Stability AI平台"
+    
+  anthropic:
+    enabled: false
+    api_host: "https://api.anthropic.com"
+    timeout: 180
+    max_retries: 3
+    rate_limit: 40
+    description: "Anthropic平台"
+
+# 全局限制配置
+global_limits:
+  max_concurrent_requests: 10
+  max_queue_size: 100
+  default_timeout: 300
+  retry_delay: 5

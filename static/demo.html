@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Generation API Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 450px 1fr;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 1px solid #e9ecef;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .content-area {
+            padding: 30px;
+        }
+
+        .mode-selector {
+            margin-bottom: 30px;
+        }
+
+        .mode-selector label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .mode-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .mode-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .mode-btn h4 {
+            margin-bottom: 5px;
+        }
+
+        .mode-btn p {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .config-section {
+            margin-bottom: 25px;
+        }
+
+        .config-section label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-upload {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .file-upload.dragover {
+            border-color: #667eea;
+            background: #e7f3ff;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .generate-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .status-panel h3 {
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .task-info {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .task-info.hidden {
+            display: none;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .status-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.processing {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-badge.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .task-header {
+            grid-column: 1 / -1;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .task-header h4 {
+            margin: 0 0 8px 0;
+            color: #495057;
+        }
+
+        .task-header p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .image-card img:hover {
+            transform: scale(1.05);
+        }
+
+        /* 图片放大模态框样式 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.9);
+            animation: fadeIn 0.3s;
+        }
+
+        .image-modal-content {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 1200px;
+            max-height: 80%;
+            object-fit: contain;
+            animation: zoomIn 0.3s;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .image-modal-close:hover,
+        .image-modal-close:focus {
+            color: #bbb;
+            text-decoration: none;
+        }
+
+        .image-modal-info {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 1200px;
+            text-align: center;
+            color: #ccc;
+            padding: 10px 0;
+            height: 150px;
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0}
+            to {opacity: 1}
+        }
+
+        @keyframes zoomIn {
+            from {transform: scale(0)}
+            to {transform: scale(1)}
+        }
+
+        .image-card-info {
+            padding: 15px;
+        }
+
+        .image-card-info h4 {
+            margin-bottom: 5px;
+            color: #495057;
+            font-size: 0.9em;
+        }
+
+        .image-card-info p {
+            color: #6c757d;
+            font-size: 0.8em;
+        }
+
+        .download-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .ai-config {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .ai-config label {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .ai-config select {
+            padding: 8px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 Image Generation API Demo</h1>
+            <p>Generate game assets with different art styles and generation modes</p>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <!-- Generation Target Selection -->
+                <div class="mode-selector">
+                    <label>Generation Target</label>
+                    <div class="mode-buttons">
+                        <div class="mode-btn active" data-target="symbols">
+                            <h4>🎯 Symbols</h4>
+                            <p>Generate game symbols and icons</p>
+                        </div>
+                        <div class="mode-btn" data-target="ui">
+                            <h4>🖼️ UI Elements</h4>
+                            <p>Generate buttons, panels, UI components</p>
+                        </div>
+                        <div class="mode-btn" data-target="backgrounds">
+                            <h4>🏞️ Backgrounds</h4>
+                            <p>Generate background scenes and frames</p>
+                        </div>
+                        <div class="mode-btn" data-target="complete">
+                            <h4>🎮 Complete Game</h4>
+                            <p>Generate all assets for a complete game</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generation Mode Selection -->
+                <div class="mode-selector">
+                    <label>Generation Mode</label>
+                    <div class="mode-buttons" id="generationModeButtons">
+                        <div class="mode-btn active" data-mode="prompt_only">
+                            <h4>📝 Prompt Only</h4>
+                            <p>Generate using text descriptions only</p>
+                        </div>
+                        <div class="mode-btn" data-mode="reference_assets">
+                            <h4>📁 Reference Assets</h4>
+                            <p>Upload ZIP file with asset references</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Art Style Configuration -->
+                <div class="config-section">
+                    <label>Art Style Mode</label>
+                    <select id="artStyleMode">
+                        <option value="preset">Preset Theme</option>
+                        <option value="custom_direct">Custom Direct</option>
+                        <option value="custom_ai_enhanced">AI Enhanced</option>
+                        <option value="reference_image">Reference Image</option>
+                    </select>
+                </div>
+
+                <!-- Preset Theme -->
+                <div class="config-section" id="presetThemeSection">
+                    <label>Preset Theme</label>
+                    <select id="presetTheme">
+                        <option value="fantasy_medieval">Fantasy Medieval</option>
+                        <option value="cyberpunk_neon">Cyberpunk Neon</option>
+                        <option value="steampunk_bronze">Steampunk Bronze</option>
+                        <option value="cosmic_space">Cosmic Space</option>
+                        <option value="nature_organic">Nature Organic</option>
+                        <option value="dark_gothic">Dark Gothic</option>
+                        <option value="chinese_traditional">Chinese Traditional</option>
+                        <option value="space_scifi">Space Sci-Fi</option>
+                    </select>
+                </div>
+
+                <!-- Custom Direct Components -->
+                <div class="config-section hidden" id="customDirectSection">
+                    <label>Custom Style Components (JSON)</label>
+                    <textarea id="customComponents" placeholder='Enter custom style components JSON...
+{
+  "base_prompt": "mystical fantasy style",
+  "color_palette": "deep purple, golden yellow, emerald green",
+  "effects": "magical glow, particle effects, mystical aura",
+  "materials": "crystal textures, metallic surfaces, ethereal mist",
+  "lighting": "dramatic shadows, magical illumination",
+  "description": "Epic fantasy with mystical elements"
+}'></textarea>
+                </div>
+
+                <!-- Custom Prompt -->
+                <div class="config-section hidden" id="customPromptSection">
+                    <label>Custom Style Description</label>
+                    <textarea id="customPrompt" placeholder="Describe the artistic style you want...
+Example: Traditional Chinese ink painting style with vibrant red and gold colors, featuring dragon and phoenix motifs"></textarea>
+                    <div class="ai-config">
+                        <div class="form-group">
+                            <label>AI Provider</label>
+                            <select id="aiProvider">
+                                <option value="openai">OpenAI</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>AI Model</label>
+                            <select id="aiModel">
+                                <option value="gpt-4o">GPT-4o</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reference Images Upload -->
+                <div class="config-section hidden" id="referenceImagesSection">
+                    <label>Reference Images (Max 3)</label>
+                    <div class="file-upload" id="imageUpload">
+                        <p>📷 Click or drag images here</p>
+                        <input type="file" id="imageFiles" multiple accept="image/*" style="display: none;">
+                    </div>
+                    <div id="imagePreview"></div>
+                    <div class="ai-config">
+                        <div class="form-group">
+                            <label>AI Provider</label>
+                            <select id="refImageProvider">
+                                <option value="openai">OpenAI</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>AI Model</label>
+                            <select id="refImageModel">
+                                <option value="gpt-4o">GPT-4o</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reference Assets Upload -->
+                <div class="config-section hidden" id="referenceAssetsSection">
+                    <label>Reference Assets ZIP</label>
+                    <div class="file-upload" id="assetsUpload">
+                        <p>📁 Click or drag ZIP file here</p>
+                        <input type="file" id="assetsFile" accept=".zip" style="display: none;">
+                    </div>
+                    <div id="assetsPreview"></div>
+                </div>
+
+                <!-- Provider and Model Configuration -->
+                <div class="config-section">
+                    <label>Image Generation Provider & Model</label>
+                    <div class="form-group">
+                        <label>Provider</label>
+                        <select id="imageProvider">
+                            <option value="openai">OpenAI</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Model</label>
+                        <select id="imageModel">
+                            <option value="gpt-image-1">GPT Image 1</option>
+                            <option value="dall-e-3">DALL-E 3</option>
+                            <option value="dall-e-2">DALL-E 2</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Generation Parameters -->
+                <div class="config-section" id="configSection">
+                    <label>JSON Configuration</label>
+                    <textarea id="configJson" placeholder="Enter JSON configuration...">{
+  "base_symbols": {
+    "low_value": [
+      {
+        "filename": "jack_hearts",
+        "description": "Jack of Hearts card symbol",
+        "count": 1
+      }
+    ]
+  }
+}</textarea>
+                </div>
+
+                <!-- Generate Button -->
+                <button class="generate-btn" id="generateBtn">
+                    🚀 Generate Images
+                </button>
+            </div>
+
+            <div class="content-area">
+                <!-- Status Panel -->
+                <div class="status-panel">
+                    <h3>📊 Generation Status</h3>
+                    <div id="currentTaskInfo" class="task-info hidden">
+                        <strong>Current Task:</strong> <span id="currentTaskId">-</span><br>
+                        <strong>Expected Images:</strong> <span id="expectedCount">-</span><br>
+                        <strong>Progress:</strong> <span id="progressInfo">-</span>
+                    </div>
+                    <div id="statusList">
+                        <div class="status-item">
+                            <span>Ready to generate</span>
+                            <span class="status-badge pending">Idle</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error/Success Messages -->
+                <div id="messageContainer"></div>
+
+                <!-- Generated Images Gallery -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>🖼️ Generated Images</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="prevTaskBtn" class="download-btn" style="margin: 0; background: #6c757d;" onclick="switchToPreviousTask()" disabled>
+                                ← Previous Task
+                            </button>
+                            <button id="nextTaskBtn" class="download-btn" style="margin: 0; background: #6c757d;" onclick="switchToNextTask()" disabled>
+                                Next Task →
+                            </button>
+                            <select id="taskSelector" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: white;" onchange="switchToSelectedTask()">
+                                <option value="">Select Previous Task...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="gallery" id="imageGallery">
+                        <!-- Images will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片放大模态框 -->
+    <div id="imageModal" class="image-modal">
+        <span class="image-modal-close">&times;</span>
+        <img class="image-modal-content" id="modalImage">
+        <div class="image-modal-info" id="modalInfo"></div>
+    </div>
+
+    <script>
+        // 配置
+        const API_BASE_URL = window.location.origin;
+        
+        // 状态管理
+        let currentTarget = 'symbols';
+        let currentMode = 'prompt_only';
+        let currentArtStyleMode = 'preset';
+        let uploadedImages = [];
+        let uploadedAssets = null;
+        let currentTaskId = null;
+        let pollingInterval = null;
+
+        // 任务结果缓存 (最多10个任务)
+        let taskResultsCache = [];
+        const MAX_CACHED_TASKS = 10;
+
+        let currentDisplayedTaskIndex = -1; // 当前显示的任务在缓存中的索引
+
+        // DOM 元素
+        const targetButtons = document.querySelectorAll('.mode-btn[data-target]');
+        const modeButtons = document.querySelectorAll('.mode-btn[data-mode]');
+        const artStyleModeSelect = document.getElementById('artStyleMode');
+        const generateBtn = document.getElementById('generateBtn');
+        const statusList = document.getElementById('statusList');
+        const messageContainer = document.getElementById('messageContainer');
+        const imageGallery = document.getElementById('imageGallery');
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            updateUI();
+            loadExistingImages();
+            setupImageModal();
+        });
+
+        function setupEventListeners() {
+            // Target buttons
+            targetButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    targetButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentTarget = this.dataset.target;
+                    updateUI();
+                    updateConfigExample();
+                });
+            });
+
+            // Mode buttons
+            modeButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    modeButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMode = this.dataset.mode;
+                    updateUI();
+                });
+            });
+
+            // Art style mode
+            artStyleModeSelect.addEventListener('change', function() {
+                currentArtStyleMode = this.value;
+                updateArtStyleUI();
+            });
+
+            // File uploads
+            setupFileUpload('imageUpload', 'imageFiles', handleImageUpload);
+            setupFileUpload('assetsUpload', 'assetsFile', handleAssetsUpload);
+
+            // Generate button
+            generateBtn.addEventListener('click', handleGenerate);
+        }
+
+        function updateUI() {
+            const generationModeButtons = document.getElementById('generationModeButtons');
+            const configSection = document.getElementById('configSection');
+            const referenceAssetsSection = document.getElementById('referenceAssetsSection');
+
+            // Complete Game也需要显示JSON配置
+            if (currentTarget === 'complete') {
+                generationModeButtons.style.display = 'none';
+                configSection.classList.remove('hidden'); // 修改：显示配置区域
+            } else {
+                generationModeButtons.style.display = 'grid';
+                configSection.classList.remove('hidden');
+            }
+
+            referenceAssetsSection.classList.add('hidden');
+            if (currentMode === 'reference_assets') {
+                referenceAssetsSection.classList.remove('hidden');
+            }
+
+            updateArtStyleUI();
+        }
+
+        function updateArtStyleUI() {
+            const sections = ['presetThemeSection', 'customDirectSection', 'customPromptSection', 'referenceImagesSection'];
+            sections.forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+
+            const sectionMap = {
+                'preset': 'presetThemeSection',
+                'custom_direct': 'customDirectSection',
+                'custom_ai_enhanced': 'customPromptSection',
+                'reference_image': 'referenceImagesSection'
+            };
+
+            const targetSection = sectionMap[currentArtStyleMode];
+            if (targetSection) {
+                document.getElementById(targetSection).classList.remove('hidden');
+            }
+        }
+
+        function setupFileUpload(uploadId, inputId, handler) {
+            const uploadArea = document.getElementById(uploadId);
+            const input = document.getElementById(inputId);
+
+            uploadArea.addEventListener('click', () => input.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                input.files = e.dataTransfer.files;
+                handler(e.dataTransfer.files);
+            });
+
+            input.addEventListener('change', (e) => {
+                handler(e.target.files);
+            });
+        }
+
+        function handleImageUpload(files) {
+            uploadedImages = Array.from(files).slice(0, 3);
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            uploadedImages.forEach((file, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'margin-top: 10px; padding: 10px; background: #e9ecef; border-radius: 5px;';
+                div.innerHTML = `📷 ${file.name} (${(file.size/1024/1024).toFixed(2)}MB)`;
+                preview.appendChild(div);
+            });
+        }
+
+        function handleAssetsUpload(files) {
+            if (files.length > 0) {
+                uploadedAssets = files[0];
+                const preview = document.getElementById('assetsPreview');
+                preview.innerHTML = `<div style="margin-top: 10px; padding: 10px; background: #e9ecef; border-radius: 5px;">📁 ${uploadedAssets.name} (${(uploadedAssets.size/1024/1024).toFixed(2)}MB)</div>`;
+            }
+        }
+
+        async function handleGenerate() {
+            try {
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = '<span class="loading"></span> Generating...';
+                
+                updateStatus('Preparing request...', 'processing');
+                
+                const result = await generateImages();
+                
+                if (result.success) {
+                    currentTaskId = result.data.task_id;
+                    const expectedCount = calculateExpectedOutputs();
+                    
+                    showMessage(`Generation started! Task ID: ${currentTaskId}`, 'success');
+                    showCurrentTaskInfo(currentTaskId, expectedCount);
+                    updateStatus(`Task started: ${currentTaskId} (${expectedCount} images expected)`, 'processing');
+                    
+                    startTaskPolling(currentTaskId, expectedCount);
+                } else {
+                    throw new Error(result.message || 'Generation failed');
+                }
+                
+            } catch (error) {
+                console.error('Generation error:', error);
+                showMessage(`Error: ${error.message}`, 'error');
+                updateStatus('Generation failed', 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '🚀 Generate Images';
+            }
+        }
+
+        function calculateExpectedOutputs() {
+            try {
+                if (currentTarget === 'complete') {
+                    return 15;
+                }
+                
+                const configJson = document.getElementById('configJson').value;
+                const config = JSON.parse(configJson);
+                
+                let count = 0;
+                function countItems(obj) {
+                    if (Array.isArray(obj)) {
+                        obj.forEach(item => {
+                            count += item.count || 1;
+                        });
+                    } else if (typeof obj === 'object' && obj !== null) {
+                        Object.values(obj).forEach(value => {
+                            countItems(value);
+                        });
+                    }
+                }
+                
+                countItems(config);
+                return Math.max(count, 1);
+            } catch (error) {
+                return 1;
+            }
+        }
+
+        function showCurrentTaskInfo(taskId, expectedCount) {
+            document.getElementById('currentTaskId').textContent = taskId;
+            document.getElementById('expectedCount').textContent = expectedCount;
+            document.getElementById('progressInfo').textContent = 'Starting...';
+            document.getElementById('currentTaskInfo').classList.remove('hidden');
+        }
+
+        function updateProgressInfo(progressText) {
+            const progressSpan = document.getElementById('progressInfo');
+            if (progressSpan) {
+                progressSpan.textContent = progressText;
+            }
+        }
+
+        function hideCurrentTaskInfo() {
+            document.getElementById('currentTaskInfo').classList.add('hidden');
+        }
+
+        function startTaskPolling(taskId, expectedCount = 1) {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+            
+            let attempts = 0;
+            const maxAttempts = 60;
+            
+            pollingInterval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/v1/assets/demo/task/${taskId}/status`);
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            const taskData = result.data;
+                            const completedCount = taskData.completed_count || 0;
+                            
+                            updateProgressInfo(`${completedCount}/${expectedCount} images found`);
+                            updateStatus(`Progress: ${completedCount}/${expectedCount} images (${attempts}/${maxAttempts})`, 'processing');
+                            
+                            if (taskData.is_completed && completedCount > 0) {
+                                clearInterval(pollingInterval);
+                                pollingInterval = null;
+                                updateStatus(`Task completed! Found ${completedCount} images`, 'processing');
+                                await loadTaskResultWithUrls(taskId);
+                                return;
+                            }
+                        }
+                    }
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                        updateStatus('Polling timeout - trying final check...', 'processing');
+                        await loadTaskResultWithUrls(taskId);
+                    }
+                    
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    updateStatus(`Polling error (${attempts}/${maxAttempts})`, 'processing');
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(pollingInterval);
+                        pollingInterval = null;
+                        updateStatus('Polling failed - trying final check...', 'processing');
+                        await loadTaskResultWithUrls(taskId);
+                    }
+                }
+            }, 10000);
+        }
+
+        async function loadTaskResultWithUrls(taskId) {
+            try {
+                updateStatus('Loading results with presigned URLs...', 'processing');
+                
+                const response = await fetch(`${API_BASE_URL}/api/v1/assets/demo/task/${taskId}/result?expiration=7200`);
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data.results && result.data.results.length > 0) {
+                        // 缓存任务结果
+                        cacheTaskResult(result.data);
+                        
+                        displayGeneratedImages(result.data);
+                        updateStatus('Images loaded successfully', 'completed');
+                        updateProgressInfo(`Completed: ${result.data.results.length} images`);
+                        showMessage(`Successfully loaded ${result.data.results.length} generated images!`, 'success');
+                        setTimeout(() => hideCurrentTaskInfo(), 3000);
+                    } else {
+                        updateStatus('No images found yet', 'processing');
+                        updateProgressInfo('No images found');
+                        showMessage('No images found yet. The task might still be processing.', 'error');
+                    }
+                } else {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `Failed to load results: ${response.statusText}`);
+                }
+                
+            } catch (error) {
+                console.error('Task result loading error:', error);
+                showMessage(`Failed to load results: ${error.message}`, 'error');
+                updateStatus('Failed to load results', 'error');
+                updateProgressInfo('Loading failed');
+            }
+        }
+
+        function cacheTaskResult(taskData) {
+            // 检查是否已经存在
+            const existingIndex = taskResultsCache.findIndex(cached => cached.task_id === taskData.task_id);
+            
+            if (existingIndex >= 0) {
+                // 更新现有缓存
+                taskResultsCache[existingIndex] = {
+                    ...taskData,
+                    timestamp: new Date().toISOString()
+                };
+            } else {
+                // 添加新的缓存
+                taskResultsCache.unshift({
+                    ...taskData,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // 保持最多10个任务
+                if (taskResultsCache.length > MAX_CACHED_TASKS) {
+                    taskResultsCache = taskResultsCache.slice(0, MAX_CACHED_TASKS);
+                }
+            }
+            
+            // 更新当前显示的任务索引
+            currentDisplayedTaskIndex = 0;
+            
+            // 更新任务选择器和导航按钮
+            updateTaskNavigation();
+        }
+
+        function updateTaskNavigation() {
+            const taskSelector = document.getElementById('taskSelector');
+            const prevBtn = document.getElementById('prevTaskBtn');
+            const nextBtn = document.getElementById('nextTaskBtn');
+            
+            // 更新选择器
+            taskSelector.innerHTML = '<option value="">Select Previous Task...</option>';
+            taskResultsCache.forEach((task, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const timestamp = new Date(task.timestamp).toLocaleString();
+                option.textContent = `${task.task_id} (${task.results.length} images) - ${timestamp}`;
+                if (index === currentDisplayedTaskIndex) {
+                    option.selected = true;
+                }
+                taskSelector.appendChild(option);
+            });
+            
+            // 更新导航按钮状态
+            prevBtn.disabled = currentDisplayedTaskIndex <= 0 || taskResultsCache.length <= 1;
+            nextBtn.disabled = currentDisplayedTaskIndex >= taskResultsCache.length - 1 || taskResultsCache.length <= 1;
+            
+            if (!prevBtn.disabled) {
+                prevBtn.style.background = '#007bff';
+            } else {
+                prevBtn.style.background = '#6c757d';
+            }
+            
+            if (!nextBtn.disabled) {
+                nextBtn.style.background = '#007bff';
+            } else {
+                nextBtn.style.background = '#6c757d';
+            }
+        }
+
+        function switchToPreviousTask() {
+            if (currentDisplayedTaskIndex > 0) {
+                currentDisplayedTaskIndex--;
+                const taskData = taskResultsCache[currentDisplayedTaskIndex];
+                displayGeneratedImages(taskData);
+                updateTaskNavigation();
+                showMessage(`Switched to task: ${taskData.task_id}`, 'success');
+            }
+        }
+
+        function switchToNextTask() {
+            if (currentDisplayedTaskIndex < taskResultsCache.length - 1) {
+                currentDisplayedTaskIndex++;
+                const taskData = taskResultsCache[currentDisplayedTaskIndex];
+                displayGeneratedImages(taskData);
+                updateTaskNavigation();
+                showMessage(`Switched to task: ${taskData.task_id}`, 'success');
+            }
+        }
+
+        function switchToSelectedTask() {
+            const taskSelector = document.getElementById('taskSelector');
+            const selectedIndex = parseInt(taskSelector.value);
+            
+            if (!isNaN(selectedIndex) && selectedIndex >= 0 && selectedIndex < taskResultsCache.length) {
+                currentDisplayedTaskIndex = selectedIndex;
+                const taskData = taskResultsCache[currentDisplayedTaskIndex];
+                displayGeneratedImages(taskData);
+                updateTaskNavigation();
+                showMessage(`Switched to task: ${taskData.task_id}`, 'success');
+            }
+        }
+
+        async function generateImages() {
+            let artStyleConfig;
+            
+            if (currentArtStyleMode === 'reference_image' && uploadedImages.length > 0) {
+                updateStatus('Generating art style from images...', 'processing');
+                artStyleConfig = await generateArtStyleFromImages();
+            } else {
+                artStyleConfig = await buildArtStyleConfig();
+            }
+
+            if (currentTarget === 'complete') {
+                return await generateCompleteGame(artStyleConfig);
+            } else {
+                return await generateSingleModule(artStyleConfig);
+            }
+        }
+
+        async function generateArtStyleFromImages() {
+            const formData = new FormData();
+            uploadedImages.forEach(image => {
+                formData.append('reference_images', image);
+            });
+            formData.append('provider', document.getElementById('refImageProvider').value);
+            formData.append('model', document.getElementById('refImageModel').value);
+            formData.append('max_images', '3');
+
+            const response = await fetch(`${API_BASE_URL}/api/v1/assets/art-style/reference-image`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Art style generation failed: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                return result.data;
+            } else {
+                throw new Error(result.message || 'Art style generation failed');
+            }
+        }
+
+        async function buildArtStyleConfig() {
+            const config = {
+                mode: currentArtStyleMode
+            };
+
+            switch (currentArtStyleMode) {
+                case 'preset':
+                    config.preset_theme = document.getElementById('presetTheme').value;
+                    break;
+                case 'custom_direct':
+                    try {
+                        const componentsText = document.getElementById('customComponents').value;
+                        config.style_components = JSON.parse(componentsText);
+                    } catch (error) {
+                        throw new Error('Invalid JSON in Custom Components: ' + error.message);
+                    }
+                    break;
+                case 'custom_ai_enhanced':
+                    config.custom_prompt = document.getElementById('customPrompt').value;
+                    config.ai_provider = document.getElementById('aiProvider').value;
+                    config.ai_model = document.getElementById('aiModel').value;
+                    break;
+                case 'reference_image':
+                    config.ai_provider = document.getElementById('refImageProvider').value;
+                    config.ai_model = document.getElementById('refImageModel').value;
+                    break;
+            }
+
+            return config;
+        }
+
+        async function generateSingleModule(artStyleConfig) {
+            const configJson = document.getElementById('configJson').value;
+            
+            let config;
+            try {
+                config = JSON.parse(configJson);
+            } catch (error) {
+                throw new Error('Invalid JSON configuration: ' + error.message);
+            }
+
+            const request = {
+                module: currentTarget,
+                model: document.getElementById('imageModel').value,
+                provider: document.getElementById('imageProvider').value,
+                generation_mode: currentMode,
+                generation_params: {
+                    art_style: artStyleConfig,
+                    ...config
+                }
+            };
+
+            if (currentMode === 'reference_assets' && uploadedAssets) {
+                return await generateWithFiles(request, uploadedAssets);
+            } else {
+                return await generateWithJson(request);
+            }
+        }
+
+        async function generateCompleteGame(artStyleConfig) {
+            // 从JSON配置获取完整游戏配置
+            const configJson = document.getElementById('configJson').value;
+            let completeGameConfig;
+            
+            try {
+                completeGameConfig = JSON.parse(configJson);
+            } catch (error) {
+                // 如果JSON解析失败，使用默认配置
+                console.warn('JSON解析失败，使用默认配置:', error);
+                completeGameConfig = getCompleteGameConfig();
+            }
+
+            const request = {
+                global_config: {
+                    global_art_style: artStyleConfig,
+                    model: document.getElementById('imageModel').value,
+                    provider: document.getElementById('imageProvider').value,
+                    generation_mode: "prompt_only"
+                },
+                modules: completeGameConfig
+            };
+
+            const response = await fetch(`${API_BASE_URL}/api/v1/assets/image/generate-complete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(request)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Complete game generation failed: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        async function generateWithJson(request) {
+            const response = await fetch(`${API_BASE_URL}/api/v1/assets/image/${request.module}/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(request)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Generation failed: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        async function generateWithFiles(request, assetsFile) {
+            const formData = new FormData();
+            formData.append('request_data', JSON.stringify(request));
+            formData.append('reference_files', assetsFile);
+
+            const response = await fetch(`${API_BASE_URL}/api/v1/assets/image/${request.module}/generate-with-files`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Generation with files failed: ${response.statusText}`);
+            }
+
+            return await response.json();
+        }
+
+        function displayGeneratedImages(taskData) {
+            const gallery = document.getElementById('imageGallery');
+            gallery.innerHTML = '';
+
+            if (!taskData.results || taskData.results.length === 0) {
+                gallery.innerHTML = '<p>No images generated</p>';
+                return;
+            }
+
+            // Add task header
+            const taskHeader = document.createElement('div');
+            taskHeader.className = 'task-header';
+            taskHeader.innerHTML = `
+                <h4>Task: ${taskData.task_id}</h4>
+                <p>
+                    Generated ${taskData.results.length} images • 
+                    S3 Path: ${taskData.s3_prefix || 'unknown'} • 
+                    Status: ${taskData.status || 'completed'}
+                </p>
+            `;
+            gallery.appendChild(taskHeader);
+
+            taskData.results.forEach((result, index) => {
+                const imageCard = document.createElement('div');
+                imageCard.className = 'image-card';
+                
+                const imageUrl = result.presigned_url || result.url || result.s3_url;
+                
+                imageCard.innerHTML = `
+                    <img src="${imageUrl}" alt="${result.filename || result.file_name}" loading="lazy" 
+                         onclick="openImageModal('${imageUrl}', '${result.filename || result.file_name}', '${result.description || 'Generated image'}')"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZTllY2VmIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzZjNzU3ZCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkZhaWxlZCB0byBsb2FkPC90ZXh0Pjwvc3ZnPg==';">
+                    <div class="image-card-info">
+                        <h4>${result.filename || result.file_name || 'Generated Image'}</h4>
+                        <p>${result.description || 'Generated image'}</p>
+                        <p><small>Size: ${result.resolution || 'Unknown'}</small></p>
+                        <p><small>Category: ${result.category || 'N/A'} / ${result.subcategory || 'N/A'}</small></p>
+                        ${result.expires_at ? `<p><small>URL expires: ${new Date(result.expires_at).toLocaleString()}</small></p>` : ''}
+                        <button class="download-btn" onclick="downloadImageFixed('${imageUrl}', '${result.filename || result.file_name || 'image.png'}')">
+                            📥 Download
+                        </button>
+                    </div>
+                `;
+                
+                gallery.appendChild(imageCard);
+            });
+        }
+
+        async function loadExistingImages() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/assets/demo/tasks/recent?limit=5&expiration=7200`);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data.tasks.length > 0) {
+                        // 缓存所有最近的任务
+                        result.data.tasks.forEach(task => {
+                            cacheTaskResult(task);
+                        });
+                        
+                        // 显示最新的任务
+                        const recentTask = result.data.tasks[0];
+                        if (recentTask && recentTask.results && recentTask.results.length > 0) {
+                            currentDisplayedTaskIndex = 0;
+                            displayGeneratedImages(recentTask);
+                            updateTaskNavigation();
+                            updateStatus('Loaded recent images', 'completed');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load existing images:', error);
+            }
+        }
+
+        async function downloadImage(url, filename) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(downloadUrl);
+                    showMessage('Download started', 'success');
+                } else {
+                    showMessage('Download failed, please try right-click and save', 'error');
+                }
+            } catch (error) {
+                console.error('Download error:', error);
+                showMessage(`Download failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function downloadImageFixed(url, filename) {
+            try {
+                showMessage('Starting download...', 'success');
+                
+                // 使用预签名URL直接下载
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'image/*'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+                }
+                
+                const blob = await response.blob();
+                
+                // 创建下载链接
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                a.download = filename;
+                
+                // 添加到DOM，点击，然后移除
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // 清理URL对象
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(downloadUrl);
+                }, 100);
+                
+                showMessage(`Successfully downloaded: ${filename}`, 'success');
+                
+            } catch (error) {
+                console.error('Download error:', error);
+                showMessage(`Download failed: ${error.message}. Try right-click and "Save image as..."`, 'error');
+                
+                // 提供备选方案：打开新窗口
+                try {
+                    window.open(url, '_blank');
+                    showMessage('Opened image in new tab. You can right-click to save.', 'success');
+                } catch (openError) {
+                    console.error('Failed to open image:', openError);
+                }
+            }
+        }
+
+        function setupImageModal() {
+            const modal = document.getElementById('imageModal');
+            const modalClose = document.querySelector('.image-modal-close');
+            
+            // 点击关闭按钮关闭模态框
+            modalClose.onclick = function() {
+                modal.style.display = "none";
+            }
+            
+            // 点击模态框背景关闭
+            modal.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+            
+            // ESC键关闭模态框
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && modal.style.display === "block") {
+                    modal.style.display = "none";
+                }
+            });
+        }
+
+        function openImageModal(imageUrl, filename, description) {
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            const modalInfo = document.getElementById('modalInfo');
+            
+            modal.style.display = "block";
+            modalImg.src = imageUrl;
+            modalInfo.innerHTML = `
+                <h3 style="color: white; margin-bottom: 10px;">${filename}</h3>
+                <p style="color: #ccc; margin-bottom: 15px;">${description}</p>
+                <button class="download-btn" onclick="downloadImageFixed('${imageUrl}', '${filename}')" style="margin: 5px;">
+                    📥 Download Full Size
+                </button>
+                <button class="download-btn" onclick="window.open('${imageUrl}', '_blank')" style="margin: 5px; background: #17a2b8;">
+                    🔗 Open in New Tab
+                </button>
+            `;
+        }
+
+        function updateStatus(message, status) {
+            const statusList = document.getElementById('statusList');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const statusItem = document.createElement('div');
+            statusItem.className = 'status-item';
+            statusItem.innerHTML = `
+                <span>${message} (${timestamp})</span>
+                <span class="status-badge ${status}">${status.toUpperCase()}</span>
+            `;
+            
+            statusList.insertBefore(statusItem, statusList.firstChild);
+            
+            while (statusList.children.length > 5) {
+                statusList.removeChild(statusList.lastChild);
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            
+            container.innerHTML = '';
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+
+        function getCompleteGameConfig() {
+            return {
+                symbols: {
+                    base_symbols: {
+                        low_value: [
+                            {
+                                filename: "ace_hearts",
+                                description: "Ace of Hearts with ornate design",
+                                count: 1
+                            },
+                            {
+                                filename: "king_spades",
+                                description: "King of Spades with royal armor",
+                                count: 1
+                            },
+                            {
+                                filename: "queen_diamonds",
+                                description: "Queen of Diamonds with elegant crown",
+                                count: 1
+                            },
+                            {
+                                filename: "jack_clubs",
+                                description: "Jack of Clubs with warrior design",
+                                count: 1
+                            }
+                        ],
+                        high_value: [
+                            {
+                                filename: "royal_sword",
+                                description: "Majestic royal sword with magical aura",
+                                count: 1
+                            },
+                            {
+                                filename: "golden_crown",
+                                description: "Golden crown with precious gems",
+                                count: 1
+                            },
+                            {
+                                filename: "magic_orb",
+                                description: "Mystical orb with swirling energy",
+                                count: 1
+                            }
+                        ]
+                    },
+                    special_symbols: {
+                        wild: [
+                            {
+                                filename: "dragon_wild",
+                                description: "Powerful dragon wild symbol",
+                                count: 1
+                            }
+                        ],
+                        scatter: [
+                            {
+                                filename: "treasure_scatter",
+                                description: "Ancient treasure chest scatter",
+                                count: 1
+                            }
+                        ]
+                    }
+                },
+                ui: {
+                    buttons: {
+                        main_controls: [
+                            {
+                                filename: "spin_btn",
+                                description: "Main spin button with magical glow",
+                                count: 1
+                            },
+                            {
+                                filename: "auto_spin_btn",
+                                description: "Auto spin button with gear icon",
+                                count: 1
+                            },
+                            {
+                                filename: "max_bet_btn",
+                                description: "Max bet button with golden finish",
+                                count: 1
+                            }
+                        ],
+                        menu_controls: [
+                            {
+                                filename: "settings_btn",
+                                description: "Settings button with gear icon",
+                                count: 1
+                            },
+                            {
+                                filename: "paytable_btn",
+                                description: "Paytable button with info icon",
+                                count: 1
+                            }
+                        ]
+                    },
+                    panels: {
+                        info_panels: [
+                            {
+                                filename: "balance_panel",
+                                description: "Balance display panel",
+                                count: 1
+                            },
+                            {
+                                filename: "win_panel",
+                                description: "Win amount display panel",
+                                count: 1
+                            }
+                        ]
+                    }
+                },
+                backgrounds: {
+                    game_scenes: {
+                        main_game: [
+                            {
+                                filename: "main_background",
+                                description: "Main game background scene",
+                                count: 1,
+                                resolution: "1920x1080"
+                            }
+                        ]
+                    },
+                    frames: {
+                        border_frames: [
+                            {
+                                filename: "game_frame",
+                                description: "Main game area frame",
+                                count: 1
+                            }
+                        ]
+                    }
+                }
+            };
+        }
+
+        const exampleConfigs = {
+            symbols: {
+                "base_symbols": {
+                    "low_value": [
+                        {
+                            "filename": "jack_hearts",
+                            "description": "Jack of Hearts card symbol with medieval knight design",
+                            "count": 1
+                        },
+                        {
+                            "filename": "queen_spades", 
+                            "description": "Queen of Spades with royal crown and elegant dress",
+                            "count": 1
+                        },
+                        {
+                            "filename": "king_clubs",
+                            "description": "King of Clubs with medieval armor and royal scepter",
+                            "count": 1
+                        },
+                        {
+                            "filename": "ace_diamonds",
+                            "description": "Ace of Diamonds with ornate diamond symbol",
+                            "count": 1
+                        }
+                    ],
+                    "high_value": [
+                        {
+                            "filename": "royal_crown",
+                            "description": "Majestic royal crown with precious gems",
+                            "count": 1
+                        },
+                        {
+                            "filename": "magic_sword",
+                            "description": "Ornate magical sword with glowing effects",
+                            "count": 1
+                        }
+                    ]
+                },
+                "special_symbols": {
+                    "wild": [
+                        {
+                            "filename": "dragon_wild",
+                            "description": "Powerful dragon wild symbol with magical aura",
+                            "count": 1
+                        }
+                    ],
+                    "scatter": [
+                        {
+                            "filename": "treasure_scatter",
+                            "description": "Ancient treasure chest with sparkling gold",
+                            "count": 1
+                        }
+                    ]
+                }
+            },
+            ui: {
+                "buttons": {
+                    "main_controls": [
+                        {
+                            "filename": "spin_btn",
+                            "description": "Medieval style spin button with ornate border",
+                            "count": 1
+                        },
+                        {
+                            "filename": "auto_spin_btn",
+                            "description": "Auto spin button with magical glow",
+                            "count": 1
+                        },
+                        {
+                            "filename": "max_bet_btn",
+                            "description": "Max bet button with golden finish",
+                            "count": 1
+                        }
+                    ],
+                    "menu_controls": [
+                        {
+                            "filename": "settings_btn",
+                            "description": "Settings button with gear icon",
+                            "count": 1
+                        },
+                        {
+                            "filename": "paytable_btn",
+                            "description": "Paytable button with info icon",
+                            "count": 1
+                        }
+                    ]
+                },
+                "panels": {
+                    "info_panels": [
+                        {
+                            "filename": "balance_panel",
+                            "description": "Balance display panel with medieval border",
+                            "count": 1
+                        },
+                        {
+                            "filename": "win_panel",
+                            "description": "Win amount display panel with glow effect",
+                            "count": 1
+                        }
+                    ]
+                }
+            },
+            backgrounds: {
+                "game_scenes": {
+                    "main_game": [
+                        {
+                            "filename": "tavern_interior",
+                            "description": "Cozy medieval tavern interior with wooden beams",
+                            "count": 1,
+                            "resolution": "1920x1080"
+                        }
+                    ],
+                    "special_modes": [
+                        {
+                            "filename": "bonus_scene",
+                            "description": "Special bonus game background",
+                            "count": 1,
+                            "resolution": "1920x1080"
+                        }
+                    ]
+                },
+                "frames": {
+                    "border_frames": [
+                        {
+                            "filename": "main_frame",
+                            "description": "Ornate gold frame with medieval decorative elements",
+                            "count": 1
+                        }
+                    ]
+                }
+            },
+            complete: {
+                "symbols": {
+                    "base_symbols": {
+                        "low_value": [
+                            {
+                                "filename": "ace_hearts",
+                                "description": "Ace of Hearts with ornate design",
+                                "count": 1
+                            },
+                            {
+                                "filename": "king_spades",
+                                "description": "King of Spades with royal armor",
+                                "count": 1
+                            },
+                            {
+                                "filename": "queen_diamonds",
+                                "description": "Queen of Diamonds with elegant crown",
+                                "count": 1
+                            },
+                            {
+                                "filename": "jack_clubs",
+                                "description": "Jack of Clubs with warrior design",
+                                "count": 1
+                            }
+                        ],
+                        "high_value": [
+                            {
+                                "filename": "royal_sword",
+                                "description": "Majestic royal sword with magical aura",
+                                "count": 1
+                            },
+                            {
+                                "filename": "golden_crown",
+                                "description": "Golden crown with precious gems",
+                                "count": 1
+                            },
+                            {
+                                "filename": "magic_orb",
+                                "description": "Mystical orb with swirling energy",
+                                "count": 1
+                            }
+                        ]
+                    },
+                    "special_symbols": {
+                        "wild": [
+                            {
+                                "filename": "dragon_wild",
+                                "description": "Powerful dragon wild symbol",
+                                "count": 1
+                            }
+                        ],
+                        "scatter": [
+                            {
+                                "filename": "treasure_scatter",
+                                "description": "Ancient treasure chest scatter",
+                                "count": 1
+                            }
+                        ]
+                    }
+                },
+                "ui": {
+                    "buttons": {
+                        "main_controls": [
+                            {
+                                "filename": "spin_btn",
+                                "description": "Main spin button with magical glow",
+                                "count": 1
+                            },
+                            {
+                                "filename": "auto_spin_btn",
+                                "description": "Auto spin button with gear icon",
+                                "count": 1
+                            },
+                            {
+                                "filename": "max_bet_btn",
+                                "description": "Max bet button with golden finish",
+                                "count": 1
+                            }
+                        ],
+                        "menu_controls": [
+                            {
+                                "filename": "settings_btn",
+                                "description": "Settings button with gear icon",
+                                "count": 1
+                            },
+                            {
+                                "filename": "paytable_btn",
+                                "description": "Paytable button with info icon",
+                                "count": 1
+                            }
+                        ]
+                    },
+                    "panels": {
+                        "info_panels": [
+                            {
+                                "filename": "balance_panel",
+                                "description": "Balance display panel",
+                                "count": 1
+                            },
+                            {
+                                "filename": "win_panel",
+                                "description": "Win amount display panel",
+                                "count": 1
+                            }
+                        ]
+                    }
+                },
+                "backgrounds": {
+                    "game_scenes": {
+                        "main_game": [
+                            {
+                                "filename": "main_background",
+                                "description": "Main game background scene",
+                                "count": 1,
+                                "resolution": "1920x1080"
+                            }
+                        ]
+                    },
+                    "frames": {
+                        "border_frames": [
+                            {
+                                "filename": "game_frame",
+                                "description": "Main game area frame",
+                                "count": 1
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+
+        function updateConfigExample() {
+            const configTextarea = document.getElementById('configJson');
+            configTextarea.value = JSON.stringify(exampleConfigs[currentTarget], null, 2);
+        }
+
+        // Initialize with symbols config
+        updateConfigExample();
+        
+        // Clean up polling on page unload
+        window.addEventListener('beforeunload', () => {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        });
+    </script>
+</body>
+</html>

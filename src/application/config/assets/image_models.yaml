@@ -1,0 +1,108 @@
+# src/application/config/assets/image_models.yaml (更新版)
+# 图像资源模型配置 - 使用枚举定义的别名
+
+assets:
+  # 符号生成模型
+  symbols:
+    description: "游戏符号生成"
+    default_provider: "openai"
+    providers:
+      openai:
+        models:
+          gpt_image_1:  # 使用 AssetModelAliasEnum.GPT_IMAGE
+            model_id: "gpt-image-1"  # 对应 OpenAIModelEnum.GPT_IMAGE_1
+            description: "GPT Image 1 图像生成模型"
+            max_resolution: "1024x1024"
+            output_format: "png"
+            supports_batch: true
+            model_type: "image_generation"
+          dalle3:  # 使用 AssetModelAliasEnum.DALLE
+            model_id: "dall-e-3"  # 对应 OpenAIModelEnum.DALL_E_3
+            description: "DALL-E 3图像生成"
+            max_resolution: "1024x1024"
+            output_format: "png"
+            supports_batch: false
+            model_type: "image_generation"
+    generation_limits:
+      max_outputs_per_request: 20
+      default_timeout: 300
+
+  # UI生成模型  
+  ui:
+    description: "用户界面生成"
+    default_provider: "openai"
+    providers:
+      openai:
+        models:
+          gpt_image_1:  # 主要使用图像生成模型
+            model_id: "gpt-image-1"
+            description: "GPT Image 1 图像生成模型"
+            max_resolution: "1024x1024"
+            output_format: "png"
+            supports_batch: true
+            model_type: "image_generation"
+          dalle3:
+            model_id: "dall-e-3"
+            description: "DALL-E 3图像生成"
+            max_resolution: "1024x1024"
+            output_format: "png"
+            supports_batch: false
+            model_type: "image_generation"
+          gpt4o:  # 保留用于UI描述生成等文本任务
+            model_id: "gpt-4o"
+            description: "GPT-4o文本生成模型 (UI描述生成)"
+            max_resolution: "N/A"
+            output_format: "text"
+            supports_batch: true
+            model_type: "text_generation"
+    generation_limits:
+      max_outputs_per_request: 15
+      default_timeout: 300
+
+  # 背景生成模型
+  backgrounds:
+    description: "背景场景生成"
+    default_provider: "openai"
+    providers:
+      openai:
+        models:
+          gpt_image_1:  # 主要使用图像生成模型
+            model_id: "gpt-image-1"
+            description: "GPT Image 1 图像生成模型"
+            max_resolution: "1792x1024"
+            output_format: "png"
+            supports_batch: true
+            model_type: "image_generation"
+          dalle3:
+            model_id: "dall-e-3"
+            description: "DALL-E 3图像生成"
+            max_resolution: "1792x1024"
+            output_format: "png"
+            supports_batch: false
+            model_type: "image_generation"
+    generation_limits:
+      max_outputs_per_request: 10
+      default_timeout: 450
+
+# 模块支持的模型配置 - 使用AssetModelAliasEnum别名
+module_models:
+  symbols:
+    default_model: "gpt-image-1"  # 默认使用GPT Image 1
+    supported_models: ["gpt-image-1", "dall-e-3"]  # 只支持图像生成模型
+  ui:
+    default_model: "gpt-image-1"
+    supported_models: ["gpt-image-1", "dall-e-3", "gpt-4o"]  # UI可能需要文本描述
+  backgrounds:
+    default_model: "gpt-image-1"
+    supported_models: ["gpt-image-1", "dall-e-3"]  # 只支持图像生成模型
+
+# 全局配置
+global_generation_config:
+  max_concurrent_generations: 3
+  default_queue_priority: 2
+  cleanup_temp_files: true
+  temp_file_retention_hours: 48
+
+  # 默认模型偏好 (按优先级排序)
+  preferred_image_models: ["gpt-image-1", "dall-e-3"]
+  preferred_text_models: ["gpt-4o", "gpt-4o-mini"]
